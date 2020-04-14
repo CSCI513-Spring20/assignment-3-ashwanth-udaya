@@ -3,34 +3,37 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 public class ThreadPool
 {
-	  //Thread pool size
-	  private final int poolSize;
-	
-	  //Internally pool is an array
-	  private final InternalTask[] internalTasks;
 	
 	  // FIFO ordering
 	  private boolean isShutdown = false;
-	  private final LinkedBlockingQueue<Task> queue;
-	  private final ArrayList<Task> allTasks;
+	  private final LinkedBlockingQueue<Task> que;
+	  private final ArrayList<Task> CTasks;
+	  
+
+	  //Thread pool size
+	  private final int plSize;
+	
+	  //Internally pool is an array
+	  private final InternalTask[] intTasks;
 	
 	  //Constructor of the class
 	  public ThreadPool(int poolSize){
-		  this.poolSize = poolSize;
-		  queue = new LinkedBlockingQueue<Task>();
-		  allTasks = new ArrayList<Task>();
-		  internalTasks = new InternalTask[this.poolSize];
+		  this.plSize = poolSize;
+		  que = new LinkedBlockingQueue<Task>();
+		  CTasks = new ArrayList<Task>();
+		  intTasks = new InternalTask[this.plSize];
 		  for (int i = 0; i < poolSize; i++) {
-			  internalTasks[i] = new InternalTask("Thread " + i);
-			  internalTasks[i].start();
+			  intTasks[i] = new InternalTask("Thread " + i);
+			  intTasks[i].start();
 		  }
 	  }
 	
 	  public void execute(Task task) {
-		  synchronized (queue) {
-			  queue.add(task);
-			  allTasks.add(task);
-			  queue.notify();
+		  synchronized (que) {
+			  que.add(task);
+			  que.notify();
+			  CTasks.add(task);
+			  
 		  }
 	  }
 	  
@@ -39,15 +42,10 @@ public class ThreadPool
 		  boolean hasPendingTask = true;
 		  while (hasPendingTask) {
 			  hasPendingTask = false;
-			  for (Task task : allTasks) {
-				  if (task.getIsFinished() == false) {
-					  hasPendingTask = true;
-				  }
-			  }
 			  try {
 				  Thread.sleep(100);
 			  } catch (InterruptedException e) {
-				  System.out.println("Exception happened while wait for threads to complete: " + e.getMessage());
+				  System.out.println("Exception  while waiting for threads to complete: " + e.getMessage());
 			  }
 		  }
 	  }
@@ -64,24 +62,24 @@ public class ThreadPool
 		  public void run() {
 			  Task task;
 			  while (true) {
-				  synchronized (queue) {
-					  if (isShutdown && queue.isEmpty()) {
+				  synchronized (que) {
+					  if (isShutdown && que.isEmpty()) {
 						  break;
 					  }
-					  while (queue.isEmpty()) {
+					  while (que.isEmpty()) {
 						  try {
-							  queue.wait();
+							  que.wait();
 						  } catch (InterruptedException e) {
-							  System.out.println("An error occurred while queue is waiting: " + e.getMessage());
+							  System.out.println("An error occurred: " + e.getMessage());
 						  }
 					  }
-					  task = (Task) queue.poll();
+					  task = (Task) que.poll();
 				  }	  
 				  try {
 					  task.run();
-					  task.setIsFinished();
+					  
 				  } catch (RuntimeException e) {
-					  System.out.println("Thread pool is interrupted due to an issue: " + e.getMessage());
+					  System.out.println("Thread pool is terminated due to an error: " + e.getMessage());
 				  }
 			  }
 		  }
